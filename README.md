@@ -1,2 +1,2 @@
 # NewsHeadlines-Flask
-Basic headline news website
+Headline news website with weather data
