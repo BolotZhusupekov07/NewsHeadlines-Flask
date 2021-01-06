@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, make_response
+import datetime
 import feedparser
 import json
 from urllib.request import urlopen
 import urllib.parse
+
 
 app = Flask(__name__)
 RSS_FEEDS = {'BBS':'http://feeds.bbci.co.uk/news/rss.xml',
@@ -11,18 +13,29 @@ RSS_FEEDS = {'BBS':'http://feeds.bbci.co.uk/news/rss.xml',
             'IOL':'http://www.iol.co.za/cmlink/1.640'}
 
 DEFAULTS = {"publication": 'BBS', "city": 'London, UK'}
-
+def get_value_with_fallback(key):
+    if request.args.get(key):
+        return request.args.get(key)
+    if request.cookies.get(key):
+        return request.cookies.get(key)
+    
+    return DEFAULTS[key]
 @app.route('/') 
 def home():
-    publication = request.args.get('publication')
-    if not publication:
-        publication = DEFAULTS['publication']
+    publication = get_value_with_fallback("publication")
     articles = get_news(publication)
-    city = request.args.get('city')
-    if not city:
-        city = DEFAULTS['city']
-    weather = get_weather(city)
-    return render_template('home.html', articles=articles, weather = weather)
+    
+    city = get_value_with_fallback("city")
+    weather = get_weather (city)
+
+    response = make_response(render_template("home.html",
+                                            articles=articles,
+                                            weather=weather))
+    expires = datetime.datetime.now() + datetime.timedelta(days=365)
+    response.set_cookie("publication", publication, expires=expires)
+    response.set_cookie("city", city, expires=expires)
+    return response
+
 def get_news(query):
     query = request.args.get('publication')
     if not query or query.upper() not in RSS_FEEDS:
